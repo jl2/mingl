@@ -1,0 +1,31 @@
+* mingl
+
+** About
+A minimal OpenGL library that provides utility functions for working with OpenGL.
+
+Create a subclass of `gl-window` and implement methods to add functionality.
+
+See `common.lisp` for a full list, but available methods to override include:
+
+
+* src_lisp[]{render}
+* src_lisp[]{update}
+* src_lisp[]{handle-key}
+* src_lisp[]{handle-joystick}
+* src_lisp[]{handle-click}
+* src_lisp[]{handle-3d-mouse-event}
+* src_lisp[]{handle-resize}
+
+** Example
+To display an empty window:
+#+begin_src lisp
+  (ql:quickload '(:spacenav :mingl))
+  (defparameter *window* (make-instance 'mingl:gl-window))
+  (mingl:display *window*)
+#+end_src
+
+** License
+ISC
+
+Copyright (c) 2026 Jeremiah LaRocco <jeremiah_larocco@fastmail.com>
+
