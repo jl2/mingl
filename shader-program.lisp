@@ -131,5 +131,3 @@
 
 (defun make-shader-program-from-directory (directory-name &optional (pattern "*"))
   (apply #'make-shader-program (uiop:directory-files directory-name pattern)))
-
-

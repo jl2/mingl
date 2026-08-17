@@ -14,7 +14,7 @@
 
   :depends-on (:mingl
                :fiveam)
-  
+
   :components ((:module "t"
                 :components
                 ((:file "package"))))

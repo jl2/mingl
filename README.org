@@ -28,4 +28,3 @@ To display an empty window:
 ISC
 
 Copyright (c) 2026 Jeremiah LaRocco <jeremiah_larocco@fastmail.com>
-

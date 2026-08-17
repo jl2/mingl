@@ -20,7 +20,7 @@
   (setf *shader-dirs* (remove path *shader-dirs* :test #'pathname-match-p )))
 
 (defun lookup-shader-type (file-name)
-  "Look for file types like 'vert', 'frag', 'compute', 'fragment', etc. 
+  "Look for file types like 'vert', 'frag', 'compute', 'fragment', etc.
 and try to guess the type of shader."
   (let ((pn (pathname-name file-name))
         (ptype (pathname-type file-name)))

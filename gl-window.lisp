@@ -40,6 +40,10 @@
                  :accessor aspect-ratio
                  :documentation "Aspect ratio of the view window.")
 
+   (focused :initform t
+            :type t
+            :documentation "Whether the window has focus.")
+
    (show-fps :initform nil
              :initarg :show-fps
              :type t
@@ -51,9 +55,6 @@
                 :type fixnum
                 :accessor desired-fps
                 :documentation "Target FPS. The gl-window should achieve this frame rate as long as render and update calls are fast enough.")
-
-   (last-update-time :initform 0
-                     :documentation "Timestamp when the last update call finished")
 
    (seconds-between-updates :initform (/ 1 30)
                             :initarg :seconds-between-updates
@@ -117,7 +118,7 @@
    (height :initform 800
            :initarg :height
            :documentation "Requested initial window height.")
-   
+
    (width :initform 800
           :initarg :width
           :documentation "Requested initial window width.")
@@ -130,7 +131,7 @@
                     :documentation "Whether or not to run on the main thread.
 Some platforms require this (OSX, for example), and may be
 best practices on other platforms too.")
-   
+
    (wait-for-exit :initform nil
                   :initarg :wait-for-exit
                   :documentation "t to wait for the window to close, nil to run in a background thread.")
@@ -158,6 +159,11 @@ best practices on other platforms too.")
   (:documentation "A collection of objects and a viewport."))
 
 
+(declaim ;;(ftype (function (cffi:foreign-pointer) (or gl-window nil)) find-gl-window)
+         (inline find-gl-window
+                 add-gl-window
+                 rm-gl-window
+                 rm-all-gl-windows))
 (defun find-gl-window (window)
   "Find a gl-window associated with the given GLFW window."
   (gethash (cffi:pointer-address window) *gl-windows*))
@@ -180,6 +186,12 @@ best practices on other platforms too.")
        (glfw:destroy-window window))
   (clrhash *gl-windows*))
 
+
+(glfw:def-window-focus-callback focus-handler (window focusedp)
+  (progn
+    "GLFW keyboard handler.  Finds a gl-window for the window and calls the (handle-key) method."
+    (when-let (gl-window (find-gl-window window))
+      (handle-focus gl-window focusedp))))
 
 ;; Keyboard callback.
 (glfw:def-key-callback keyboard-handler (window key scancode action mod-keys)
@@ -222,19 +234,24 @@ best practices on other platforms too.")
        ,@body)))
 
 (defmethod initialize ((gl-window gl-window))
-  (with-gl-window-lock (gl-window)
-    (with-slots (last-update-time view-changed) gl-window
-      (setf last-update-time 0)
-      (setf view-changed t))))
+  (gl:enable :line-smooth
+             :depth-test
+             :program-point-size)
+  (gl:depth-func :lequal))
 
 
 (defmethod cleanup ((gl-window gl-window))
-  (with-gl-window-lock (gl-window)))
+  (with-gl-window-lock (gl-window)
+    ))
 
 
 (defmethod handle-joystick ((gl-window gl-window))
   (declare (ignorable gl-window))
   nil)
+(defmethod handle-focus ((gl-window gl-window) focusedp)
+  (with-slots (focused) gl-window
+    (setf focused focusedp)
+    (format t "focused: ~a~%" focused)))
 
 (defmethod handle-key ((gl-window gl-window) key scancode action mod-keys)
   (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0)))
@@ -303,10 +320,18 @@ best practices on other platforms too.")
         ((and (eql key :f12) (eql action :press))
          ;; TODO: Run this in a background thread?
          (screenshot))
-        
+
         (t
          (format t "Ignoring window: ~a key: ~a scancode ~a action ~a mod-keys ~a~%"
                  window key scancode action mod-keys))))))
+
+(defmethod handle-click ((gl-window gl-window) mouse-pos mod-keys action button)
+  (format t "~a ~a ~a ~a~%"
+          mouse-pos mod-keys action button))
+
+(defmethod handle-scroll ((gl-window gl-window) mouse-pos x-scroll y-scroll)
+  (format t "~a ~a ~a~%"
+          mouse-pos x-scroll y-scroll))
 
 (defun screenshot ()
   (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0)))
@@ -354,12 +379,18 @@ best practices on other platforms too.")
       (gl:viewport 0 0 new-width new-height))))
 
 (defmethod update ((gl-window gl-window) elapsed-seconds)
-    (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0))
-              (ignorable gl-window elapsed-seconds))
+  (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0))
+            (ignorable gl-window elapsed-seconds))
   nil)
 
 (defmethod render ((gl-window gl-window))
-  nil)
+  (with-slots (background-color) gl-window
+    (gl:clear-color (vx background-color)
+                    (vy background-color)
+                    (vz background-color)
+                    (vw background-color)))
+  (gl:clear :color-buffer
+            :depth-buffer))
 
 
 (cffi:defcallback gl-debug-callback :void ((source :int) (type :int) (id :int)
@@ -382,7 +413,7 @@ best practices on other platforms too.")
   (when (slot-value gl-window 'info-stream)
     (let ((*info-stream* (slot-value gl-window 'info-stream)))
       (glfw:set-error-callback 'error-callback)))
-  
+
 
   (let ((lparallel:*kernel* (lparallel:make-kernel *thread-count*)))
     (flet
@@ -423,13 +454,6 @@ best practices on other platforms too.")
                     (glfw:set-scroll-callback 'scroll-handler window)
                     (glfw:set-framebuffer-size-callback 'resize-handler window)
 
-                    ;; Initialize OpenGL state
-                    (gl:enable :line-smooth
-                               :depth-test
-                               :program-point-size)
-
-                    (gl:depth-func :lequal)
-
                     ;; The event loop
                     (with-slots (previous-seconds show-fps desired-fps background-color) gl-window
                       ;; Load objects for the first time
@@ -440,7 +464,8 @@ best practices on other platforms too.")
 
                       (loop
                         :with start-time = (glfw:get-time)
-                        :for frame-count from 0
+                        :for total-frame-count :from 0
+                        :for frame-count :from 0
                         :until (glfw:window-should-close-p window)
 
                         :for current-seconds = (glfw:get-time)
@@ -454,27 +479,20 @@ best practices on other platforms too.")
                              (setf frame-count 0)
 
 
+                        :when (slot-value gl-window 'focused)
                         :do
                         #+spacenav
                          (when-let (ev (sn:poll-event))
                            (handle-3d-mouse-event gl-window ev)
                            (sn:remove-events :motion))
-
-                         (handle-joystick gl-window)
+                           (handle-joystick gl-window)
 
                         :do
                            (with-gl-window-lock (gl-window)
 
                              ;; Update for next frame
                              (update gl-window elapsed-time)
-
-                             ;; Apply gl-window-wide drawing settings
-                             (gl:clear-color (vx background-color)
-                                             (vy background-color)
-                                             (vz background-color)
-                                             (vw background-color))
-                             (gl:clear :color-buffer
-                                       :depth-buffer)
+                             (incf total-frame-count)
                              (render gl-window))
                            (glfw:swap-buffers window)
 
@@ -498,7 +516,7 @@ best practices on other platforms too.")
                (glfw:destroy-window window)
                (glfw:poll-events)))))
       (glfw:terminate)
-      (cond 
+      (cond
         ((slot-value gl-window 'use-main-thread)
          (format t "Running in main thread~%")
          (tmt:call-in-main-thread #'window-main :blocking (slot-value gl-window 'wait-for-exit)))
