@@ -30,7 +30,7 @@ vec4 mandelbrotColor(int maxIter, vec2 pos) {
                break;
      }
      if (r2 < 4) {
-          return vec4(0.0, 0.0, 0.0, 0.5);
+          return vec4(0.0, 0.0, 0.0, 1);
      }
      float tmpval, tmpval2, red, green, blue, pi, fi;
      red = clamp(cos(0.3*zy) * sin(0.7*zx) + (iter % 7000)/6999.0, 0.0, 1.0);

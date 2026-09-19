@@ -70,7 +70,6 @@
 
       (let ((pos-location (gl:get-attrib-location mingl::program "in_position"))
             (pos-uv (gl:get-attrib-location mingl::program "in_uv")))
-        (format t "in_position: ~a~%in_uv ~a~%" pos-location pos-uv)
         (when (>= pos-location 0)
           (gl:enable-vertex-attrib-array pos-location)
           (gl:vertex-attrib-pointer pos-location
@@ -148,8 +147,6 @@
 
       (declare (ignorable shift-down alt-down ctrl-down super-down))
 
-      ;;(format t "~a ~a ~a ~a ~a ~a ~a~%" mod-keys shift-down alt-down ctrl-down super-down move-amount zoom-amount)
-      
       (with-slots (vao max-iterations vertices buffers program) gl-window
 
         (gl:bind-vertex-array vao)
