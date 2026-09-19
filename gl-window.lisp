@@ -152,10 +152,12 @@ best practices on other platforms too.")
    (lparallel-kernel :initform (lparallel:make-kernel *thread-count*)
                      :initarg :lparallel-kernel
                      :documentation "nil to use a single thread for updates.  Or the lparallel kernel to use.")
-   (info-stream :initform t
+   (info-stream :initform *standard-output*
                 :initarg :info-stream
                 :documentation "A stream (or t or nil) to log messages to.")
-   )
+   (reload-shaders :initform t
+                   :initarg :reload-shaders
+                   :documentation "If non-nil then recompile and relink shader programs when they've changed."))
   (:documentation "A collection of objects and a viewport."))
 
 
@@ -241,8 +243,7 @@ best practices on other platforms too.")
 
 
 (defmethod cleanup ((gl-window gl-window))
-  (with-gl-window-lock (gl-window)
-    ))
+  )
 
 
 (defmethod handle-joystick ((gl-window gl-window))
@@ -254,7 +255,7 @@ best practices on other platforms too.")
     (format t "focused: ~a~%" focused)))
 
 (defmethod handle-key ((gl-window gl-window) key scancode action mod-keys)
-  (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0)))
+  (declare  (optimize (speed 3) (safety 0) (debug 3) (space 0)))
   (with-slots (window) gl-window
     (let ((shift-down (find :shift mod-keys))
           (alt-down (find :alt mod-keys))
@@ -319,11 +320,14 @@ best practices on other platforms too.")
 
         ((and (eql key :f12) (eql action :press))
          ;; TODO: Run this in a background thread?
-         (screenshot))
+         (screenshot gl-window)
+         t)
 
         (t
-         (format t "Ignoring window: ~a key: ~a scancode ~a action ~a mod-keys ~a~%"
-                 window key scancode action mod-keys))))))
+         ;; (format t "Ignoring window: ~a key: ~a scancode ~a action ~a mod-keys ~a~%"
+         ;;         window key scancode action mod-keys)
+         nil
+         )))))
 
 (defmethod handle-click ((gl-window gl-window) mouse-pos mod-keys action button)
   (format t "~a ~a ~a ~a~%"
@@ -333,38 +337,39 @@ best practices on other platforms too.")
   (format t "~a ~a ~a~%"
           mouse-pos x-scroll y-scroll))
 
-(defun screenshot ()
-  (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0)))
-  (let* ((win-size (glfw:get-window-size))
-         (width (car win-size))
-         (height (cadr win-size))
-         (data (gl:read-pixels 0 0 width height :rgba :unsigned-byte))
+(defun screenshot (gl-window)
+  (declare  (optimize (speed 3) (safety 0) (debug 3) (space 0)))
+  (with-slots (window) gl-window
+    (let* ((win-size (glfw:get-window-size window))
+           (width (car win-size))
+           (height (cadr win-size))
+           (data (gl:read-pixels 0 0 width height :rgba :unsigned-byte))
 
-         (fname (format nil
-                        "/home/jeremiah/screenshots/mingl-screenshot~a.png"
-                        (local-time:format-rfc3339-timestring t (local-time:now)))))
-    (declare (type fixnum width height)
-             (type (simple-array (unsigned-byte 8) *) data))
-    (lparallel.thread-util:with-thread (:name fname)
-      (format t "Screenshot to: ~a~%" fname)
-      (time
-       (loop :for this-line fixnum :below height
-             :for this-line-idx fixnum = (* this-line 4 width)
-             :for that-line fixnum :from (1- height) :downto (ceiling height 2)
-             :for that-line-idx fixnum = (* that-line 4 width)
-             :do
-                (loop :for column fixnum :below (* 4 width)
-                      :for this-idx fixnum = (+ column this-line-idx)
-                      :for that-idx fixnum = (+ column that-line-idx)
-                      :do
-                         (rotatef (aref data this-idx) (aref data that-idx)))))
-      (zpng:write-png
-       (make-instance 'zpng:png :color-type :truecolor-alpha
-                                :image-data data
-                                :width width
-                                :height height)
-       fname))
-    t))
+           (fname (format nil
+                          "/home/jeremiah/screenshots/mingl-screenshot~a.png"
+                          (local-time:format-rfc3339-timestring t (local-time:now)))))
+      (declare (type fixnum width height)
+               (type (simple-array (unsigned-byte 8) *) data))
+      (lparallel.thread-util:with-thread (:name fname)
+        (format t "Screenshot to: ~a~%" fname)
+        (time
+         (loop :for this-line fixnum :below height
+               :for this-line-idx fixnum = (* this-line 4 width)
+               :for that-line fixnum :from (1- height) :downto (ceiling height 2)
+               :for that-line-idx fixnum = (* that-line 4 width)
+               :do
+                  (loop :for column fixnum :below (* 4 width)
+                        :for this-idx fixnum = (+ column this-line-idx)
+                        :for that-idx fixnum = (+ column that-line-idx)
+                        :do
+                           (rotatef (aref data this-idx) (aref data that-idx)))))
+        (zpng:write-png
+         (make-instance 'zpng:png :color-type :truecolor-alpha
+                                  :image-data data
+                                  :width width
+                                  :height height)
+         fname))
+      t)))
 
 
 (defmethod handle-resize ((gl-window gl-window) new-width new-height)
@@ -379,14 +384,14 @@ best practices on other platforms too.")
       (gl:viewport 0 0 new-width new-height))))
 
 (defmethod update ((gl-window gl-window) elapsed-seconds)
-  (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0))
+  (declare  (optimize (speed 3) (safety 0) (debug 3) (space 0))
             (ignorable gl-window elapsed-seconds))
   nil)
 
 (defmethod render ((gl-window gl-window))
   (with-slots (background-color) gl-window
     (gl:clear-color (vx background-color)
-                    (vy background-color)
+                    0.4 ;;(vy background-color)
                     (vz background-color)
                     (vw background-color)))
   (gl:clear :color-buffer
@@ -407,7 +412,7 @@ best practices on other platforms too.")
 
 (defun display (gl-window)
   "High level function to display a gl-window and start processing in a background thread."
-  (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0)))
+  (declare  (optimize (speed 3) (safety 0) (debug 3) (space 0)))
   ;; "GLFW Event Loop function that initializes GLFW and OpenGL, creates a window,
   ;;  and runs an event loop."
   (when (slot-value gl-window 'info-stream)
@@ -415,114 +420,113 @@ best practices on other platforms too.")
       (glfw:set-error-callback 'error-callback)))
 
 
-  (let ((lparallel:*kernel* (lparallel:make-kernel *thread-count*)))
-    (flet
-        ((window-main ()
-           (declare  (optimize (speed 3) (safety 0) (debug 0) (space 0)))
-           (glfw:initialize)
-           (let ((window (glfw:create-window :title "OpenGL Gl-Window"
-                                              :width (slot-value gl-window 'width)
-                                              :height (slot-value gl-window 'height)
-                                              :decorated (slot-value gl-window 'decorated)
-                                              :opengl-profile :opengl-core-profile
-                                              :context-version-major (slot-value gl-window 'gl-major-version)
-                                              :context-version-minor (slot-value gl-window 'gl-minor-version)
-                                              :opengl-debug-context (slot-value gl-window 'debug-context)
-                                              :opengl-forward-compat (slot-value gl-window 'forward-context)
-                                              :samples (slot-value gl-window 'samples)
-                                              :resizable (slot-value gl-window 'resizable))))
-             (when (null window)
-               (format t "Could not create-window!")
-               (error "Could not create-window!"))
+  (flet
+      ((window-main ()
+         (declare  (optimize (speed 3) (safety 0) (debug 3) (space 0)))
+         (glfw:initialize)
+         (let ((window (glfw:create-window :title "OpenGL Gl-Window"
+                                           :width (slot-value gl-window 'width)
+                                           :height (slot-value gl-window 'height)
+                                           :decorated (slot-value gl-window 'decorated)
+                                           :opengl-profile :opengl-core-profile
+                                           :context-version-major (slot-value gl-window 'gl-major-version)
+                                           :context-version-minor (slot-value gl-window 'gl-minor-version)
+                                           :opengl-debug-context (slot-value gl-window 'debug-context)
+                                           :opengl-forward-compat (slot-value gl-window 'forward-context)
+                                           :samples (slot-value gl-window 'samples)
+                                           :resizable (slot-value gl-window 'resizable))))
+           (when (null window)
+             (format t "Could not create-window!")
+             (error "Could not create-window!"))
 
-             (with-gl-window-lock (gl-window)
-               (setf (slot-value gl-window 'window) window))
+           (with-gl-window-lock (gl-window)
+             (setf (slot-value gl-window 'window) window))
 
-             (add-gl-window window gl-window)
+           (add-gl-window window gl-window)
 
-             (when (slot-value gl-window 'synchronous-output)
-               (gl:enable :debug-output-synchronous))
+           (when (slot-value gl-window 'synchronous-output)
+             (gl:enable :debug-output-synchronous))
 
-             (unwind-protect
-                  (progn
+           (unwind-protect
+                (progn
 
-                    ;; GLFW Initialization
-                    (setf %gl:*gl-get-proc-address* #'glfw:get-proc-address)
+                  ;; GLFW Initialization
+                  (setf %gl:*gl-get-proc-address* #'glfw:get-proc-address)
 
-                    (glfw:set-key-callback 'keyboard-handler window)
-                    (glfw:set-mouse-button-callback 'mouse-handler window)
-                    (glfw:set-scroll-callback 'scroll-handler window)
-                    (glfw:set-framebuffer-size-callback 'resize-handler window)
+                  (glfw:set-key-callback 'keyboard-handler window)
+                  (glfw:set-mouse-button-callback 'mouse-handler window)
+                  (glfw:set-scroll-callback 'scroll-handler window)
+                  (glfw:set-framebuffer-size-callback 'resize-handler window)
 
-                    ;; The event loop
-                    (with-slots (previous-seconds show-fps desired-fps background-color) gl-window
-                      ;; Load objects for the first time
-                      (initialize gl-window)
+                  ;; The event loop
+                  (with-slots (previous-seconds show-fps desired-fps background-color) gl-window
+                    ;; Load objects for the first time
+                    (initialize gl-window)
 
-                      #+spacenav(sn:sn-open)
-                      #+spacenav(sn:sensitivity 0.0125d0)
+                    #+spacenav(sn:sn-open)
+                    #+spacenav(sn:sensitivity 0.0125d0)
 
-                      (loop
-                        :with start-time = (glfw:get-time)
-                        :for total-frame-count :from 0
-                        :for frame-count :from 0
-                        :until (glfw:window-should-close-p window)
+                    (loop
+                      :with start-time = (glfw:get-time)
+                      :for total-frame-count :from 0
+                      :for frame-count :from 0
+                      :until (glfw:window-should-close-p window)
 
-                        :for current-seconds = (glfw:get-time)
-                        :for elapsed-seconds = (- current-seconds previous-seconds)
-                        :for elapsed-time = (- current-seconds start-time)
+                      :for current-seconds = (glfw:get-time)
+                      :for elapsed-seconds = (- current-seconds previous-seconds)
+                      :for elapsed-time = (- current-seconds start-time)
 
-                        :when (and show-fps (> elapsed-seconds 0.25))
-                          :do
-                             (format t "~,3f fps~%" (/ frame-count elapsed-seconds))
-                             (setf previous-seconds current-seconds)
-                             (setf frame-count 0)
-
-
-                        :when (slot-value gl-window 'focused)
+                      :when (and show-fps (> elapsed-seconds 0.25))
                         :do
-                        #+spacenav
-                         (when-let (ev (sn:poll-event))
-                           (handle-3d-mouse-event gl-window ev)
-                           (sn:remove-events :motion))
-                           (handle-joystick gl-window)
+                           (format t "~,3f fps~%" (/ frame-count elapsed-seconds))
+                           (setf previous-seconds current-seconds)
+                           (setf frame-count 0)
 
+
+                      :when (slot-value gl-window 'focused)
                         :do
-                           (with-gl-window-lock (gl-window)
+                      #+spacenav
+                       (when-let (ev (sn:poll-event))
+                         (handle-3d-mouse-event gl-window ev)
+                         (sn:remove-events :motion))
+                       (handle-joystick gl-window)
 
-                             ;; Update for next frame
-                             (update gl-window elapsed-time)
-                             (incf total-frame-count)
-                             (render gl-window))
-                           (glfw:swap-buffers window)
+                      :do
+                         (with-gl-window-lock (gl-window)
 
-                        :do
-                           (glfw:poll-events)
+                           ;; Update for next frame
+                           (with-slots (lparallel-kernel) gl-window
+                               (let ((lparallel:*kernel* lparallel-kernel))
+                                 (update gl-window elapsed-time))))
+                         (incf total-frame-count)
+                         (render gl-window)
+                         (glfw:swap-buffers window)
 
-                        :do
-                           (let* ((now (glfw:get-time))
-                                  (rem-time (- (+ current-seconds (/ 1.0 desired-fps))
-                                               now)))
-                             ;; (format t "Start: ~a now ~a sleep ~a~%" current-seconds Now rem-time)
-                             (when (> rem-time 0)
-                               (sleep rem-time))))))
-               (progn
-                 ;; Cleanup before exit
-                 (cleanup gl-window)
-                 (rm-gl-window window))
+                      :do
+                         (glfw:poll-events)
+                      :do
+                         (let* ((now (glfw:get-time))
+                                (rem-time (- (+ current-seconds (/ 1.0 desired-fps))
+                                             now)))
+                           ;; (format t "Start: ~a now ~a sleep ~a~%" current-seconds Now rem-time)
+                           (when (> rem-time 0)
+                             (sleep rem-time))))))
+             (progn
+               ;; Cleanup before exit
+               (cleanup gl-window)
+               (rm-gl-window window))
 
-               #+spacenav (sn:sn-close)
+             #+spacenav (sn:sn-close)
 
-               (glfw:destroy-window window)
-               (glfw:poll-events)))))
-      (glfw:terminate)
-      (cond
-        ((slot-value gl-window 'use-main-thread)
-         (format t "Running in main thread~%")
-         (tmt:call-in-main-thread #'window-main :blocking (slot-value gl-window 'wait-for-exit)))
-        (t
-         (format t "Running in THIS thread~%")
-         (window-main))))))
+             (glfw:destroy-window window)
+             (glfw:poll-events)))))
+    (cond
+      ((slot-value gl-window 'use-main-thread)
+       (format t "Running in main thread~%")
+       (tmt:call-in-main-thread #'window-main :blocking (slot-value gl-window 'wait-for-exit)))
+      (t
+       (format t "Running in THIS thread~%")
+       (window-main)))))
 
 (defun show-open-gl-info ()
   "Print OpenGL limits"
@@ -588,7 +592,7 @@ best practices on other platforms too.")
          (format t ":esc pressed!~%")
          t)
         ((sn:button-press-p event :rotate)
-         (screenshot)
+         (screenshot gl-window)
          t)
         (t nil)))))
 

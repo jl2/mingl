@@ -8,21 +8,26 @@
 
 (deftype color () 'vec4)
 
-(declaim (ftype (function (#.3d-vectors::*float-type*) #.3d-vectors::*float-type*) degree-to-radian radian-to-degree)
+(declaim (ftype (function (#.3d-vectors::*float-type*) #.3d-vectors::*float-type*)
+                degree-to-radian radian-to-degree)
          (inline degree-to-radian radian-to-degree))
+
 (defun degree-to-radian (deg)
   (declare (optimize (speed 3) (space 0) (safety 0) (debug 0))
            (type #.3d-vectors::*float-type* deg))
   (the #.3d-vectors::*float-type* (* deg
-                                     (/ (coerce  pi (quote #.3d-vectors::*float-type*)) 180))))
+                                     (/ (coerce pi (quote #.3d-vectors::*float-type*))
+                                        180))))
 
 (defun radian-to-degree (rad)
   (declare (optimize (speed 3) (space 0) (safety 0) (debug 0))
            (type #.3d-vectors::*float-type* rad))
   (the #.3d-vectors::*float-type* (/ rad
-                                     (/ (coerce pi (quote #.3d-vectors::*float-type*)) 180))))
+                                     (/ (coerce pi (quote #.3d-vectors::*float-type*))
+                                        180))))
 
-(defun set-uniform (name type value program)
+
+(defun set-uniform (program name type value)
   "Bind the uniform's value in the program."
 
   (let ((location (gl:get-uniform-location program name)))
@@ -30,45 +35,74 @@
     ;; Only assign values to uniforms that are used by the program
     (when (>= location 0)
       (ecase type
-        (:mat4 (gl:program-uniform-matrix program location
-                                          4
-                                          (vector (marr4 value))
-                                          t))
+        (:mat4
+         (gl:program-uniform-matrix program location
+                                    4
+                                    (vector (marr4 value))
+                                    t))
 
-        (:mat3 (gl:program-uniform-matrix program location
-                                          3
-                                          (vector (marr3 value))
-                                          t))
-        (:dmat4 (gl:program-uniform-matrix program location
-                                           4
-                                           (map 'vector (lambda (v) (coerce v 'double-float)) (vector (marr4 value)))
-                                           t))
+        (:mat3
+         (gl:program-uniform-matrix program location
+                                    3
+                                    (vector (marr3 value))
+                                    t))
+        (:dmat4
+         (gl:program-uniform-matrix program location
+                                    4
+                                    (vector (marr4 value))
+                                    ;;(map 'vector (lambda (v) (coerce v 'double-float)) (vector (marr4 value)))
+                                    t))
 
-        (:dmat3 (gl:program-uniform-matrix program location
-                                           3
-                                           (map 'vector (lambda (v) (coerce v 'double-float)) (vector (marr3 value)))
-                                           t))
+        (:dmat3
+         (gl:program-uniform-matrix program location
+                                    3
+                                    (vector (marr3 value))
+                                    ;;(map 'vector (lambda (v) (coerce v 'double-float)) (vector (marr3 value)))
+                                    t))
 
-        (:int (gl:program-uniformi program location
-                                   value))
+        (:int
+         (gl:program-uniformi program location
+                              value))
 
-        (:float (gl:program-uniformf program location
-                                     value))
+        (:float
+         (gl:program-uniformf program location
+                              value))
 
-        (:vec2 (gl:program-uniformf program location
-                                    (vx value)
-                                    (vy value)))
 
-        (:vec3 (gl:program-uniformf program location
-                                    (vx value)
-                                    (vy value)
-                                    (vz value)))
+        (:vec2
+         (gl:program-uniformf program location
+                              (vx value)
+                              (vy value)))
 
-        (:vec4 (gl:program-uniformf program location
-                                    (vx value)
-                                    (vy value)
-                                    (vz value)
-                                    (vw value)))))))
+        (:vec3
+         (gl:program-uniformf program location
+                              (vx value)
+                              (vy value)
+                              (vz value)))
+
+        (:vec4
+         (gl:program-uniformf program location
+                              (vx value)
+                              (vy value)
+                              (vz value)
+                              (vw value)))
+
+        (:dvec2
+         (gl:program-uniformf program location
+                              (vx value)
+                              (vy value)))
+        (:dvec3
+         (gl:program-uniformf program location
+                              (vx value)
+                              (vy value)
+                              (vz value)))
+        (:dvec4
+         (gl:program-uniformf program location
+                              (vx value)
+                              (vy value)
+                              (vz value)
+                              (vw value)))
+))))
 
 ;; Input handlers
 (defgeneric handle-key (gl-window key scancode action mod-keys)
@@ -127,3 +161,40 @@
 
 (defun indent-whitespace (n)
   (make-string (* 2 n) :initial-element #\space))
+
+
+(defparameter *glsl-type-db*
+  ;; gl-type, component type,  component count, byte size, vec4 sizae
+  `(
+    (:float   :float   1  ,(cffi:foreign-type-size :float) 1)
+    (:int     :int     1  ,(cffi:foreign-type-size :int) 1)
+    (:double  :double  1  ,(cffi:foreign-type-size :double) 1)
+
+    (:vec3    :float   3  ,(* 3 (cffi:foreign-type-size :float)) 1)
+    (:vec4    :float   4  ,(* 4 (cffi:foreign-type-size :float)) 1)
+    (:vec2    :float   2  ,(* 2 (cffi:foreign-type-size :float)) 1)
+
+    (:mat4    :float   16  ,(* 4 4 (cffi:foreign-type-size :float)) 4)
+    (:mat3    :float   9  ,(* 3 3 (cffi:foreign-type-size :float)) 4)
+
+    (:dvec3   :double  3  ,(* 3 (cffi:foreign-type-size :double)) 2)
+    (:dvec4   :double  4  ,(* 4 (cffi:foreign-type-size :double)) 2)
+    (:dvec2   :double  2  ,(* 2 (cffi:foreign-type-size :double)) 2)
+
+    (:dmat4   :double 4  ,(* 4 4 (cffi:foreign-type-size :double)) 8)
+    (:dmat3   :double  9  ,(* 3 3 (cffi:foreign-type-size :double)) 8)
+
+    ))
+
+(defun glsl-byte-size (tname)
+  (when-let ((val (assoc tname
+                         *glsl-type-db*)))
+    (cadddr val)))
+
+(defun glsl-component-count (tname)
+  (when-let ((val (assoc tname
+                         *glsl-type-db*)))
+    (caddr val)))
+
+(defun glsl-type-info (tname)
+  (cdr (assoc tname *glsl-type-db*)))

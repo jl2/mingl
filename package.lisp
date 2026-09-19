@@ -1,4 +1,4 @@
-;; Copyright (c) 2026 Jeremiah LaRocco <jeremiah_larocco@fastmail.com>
+;; Copyright (c) 2026 Jeremiah LaRocco <jeremiah_larocco@fastmail.cam>
 
 (defpackage :mingl
 
@@ -17,6 +17,8 @@
 
 
    #:gl-window
+   #:program
+   #:with-gl-window-lock
    #:display
    #:handle-key
    #:screenshot
@@ -28,6 +30,7 @@
    #:pause
 
    #:add-shader-directory
+   #:add-shader-search-directory
    #:rm-shader-directory
 
    #:gl-shader
@@ -48,4 +51,9 @@
    #:make-shader-program-from-directory
 
    #:set-uniform
+   #:show-gl-array
+   #:from-gl-array
+   #:to-gl-array
+   #:fill-pointer-offset
+   #:fill-buffer
    ))

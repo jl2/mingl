@@ -11,7 +11,12 @@
             :type (or null list)
             :accessor shaders
             :initarg :shaders
-            :documentation "List of shaders for this shader-program."))
+            :documentation "List of shaders for this shader-program.")
+   (auto-rebuild :initform t
+                 :type (or nil t)
+                 :accessor auto-rebuild
+                 :initarg :auto-rebuild
+                 :documentation "t to rebuild when needed, nil to rebuild when rebuild called."))
   (:documentation "One or more shaders that work together."))
 
 (defmethod needs-rebuild ((shader-program shader-program))
@@ -119,7 +124,11 @@
 
 (defun use-shader-program (shader-program)
   (declare (type shader-program shader-program))
-  (with-slots (program) shader-program
+  (with-slots (program auto-rebuild info-stream) shader-program
+    (when (and auto-rebuild (needs-rebuild shader-program))
+      (format *info-stream* "Rebuilding ~a~%" shader-program)
+      (cleanup shader-program)
+      (build-shader-program shader-program))
     (gl:use-program program))
   t)
 
@@ -127,7 +136,16 @@
 (defun make-shader-program (&rest shaders)
   (when (null shaders)
     (error "No shaders for shader-program."))
-  (make-instance 'shader-program :shaders (map 'list #'read-shader shaders)))
+  (make-instance 'shader-program :shaders (map 'list #'read-shader shaders)
+                                 :auto-rebuild t))
 
 (defun make-shader-program-from-directory (directory-name &optional (pattern "*"))
-  (apply #'make-shader-program (uiop:directory-files directory-name pattern)))
+
+  (let* ((all-files (uiop:directory-files directory-name pattern))
+         (files (remove-if-not #'mingl:lookup-shader-type
+                               all-files)))
+    (format t "all ~a~%" all-files)
+    (format t "matching ~a~%" files)
+    
+    (apply #'make-shader-program
+           files)))

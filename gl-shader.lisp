@@ -11,7 +11,7 @@
 (defparameter *shader-dirs* (list (asdf:system-relative-pathname :mingl "shaders/"))
   "A list of directories that will be searched for shaders.")
 
-(defun add-shader-search-directory* (path)
+(defun add-shader-search-directory (path)
   "Add a directory to the shader search path."
   (setf *shader-dirs* (adjoin path *shader-dirs* :test #'pathname-match-p)))
 
@@ -72,7 +72,8 @@ and try to guess the type of shader."
            (ends-with-subseq "-tesselation-cont" pn)
            (ends-with-subseq "-tesselation-control" pn)
            )
-       :tess-control-shader))))
+       :tess-control-shader)
+      (t nil))))
 
 (defun find-gl-shader (fname)
   "For each path in *shader-dirs* try to find (merge-pathnames fname path)"
@@ -200,12 +201,14 @@ and try to guess the type of shader."
 
 (defun read-shader (file-name &optional type)
   "Read a shader language file and parse out basic information, like type and layout"
-  (let ((stype (if type
-                   type
-                   (lookup-shader-type file-name)))
-        (real-name (find-gl-shader file-name)))
+  (let* ((real-name (find-gl-shader file-name))
+         (stype (if type
+                    type
+                    (lookup-shader-type real-name))))
     (when (not (uiop:file-exists-p real-name))
       (error "~a ~a do not exist!" file-name real-name))
+    (when (null stype)
+      (error "Could not deduce type of shader ~a" file-name))
     (make-instance 'gl-file-shader
                    :source-file real-name
                    :shader-type stype

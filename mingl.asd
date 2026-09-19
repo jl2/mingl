@@ -25,6 +25,7 @@
 
   :components ((:file "package")
                (:file "common")
+               (:file "buffers")
                (:file "gl-shader")
                (:file "shader-program")
                (:file "texture")
