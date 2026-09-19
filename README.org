@@ -5,23 +5,13 @@ A minimal OpenGL library that provides utility functions for working with OpenGL
 
 Create a subclass of `gl-window` and implement methods to add functionality.
 
-See `common.lisp` for a full list, but available methods to override include:
+See the examples directory for how to use it.
 
-
-* src_lisp[]{render}
-* src_lisp[]{update}
-* src_lisp[]{handle-key}
-* src_lisp[]{handle-joystick}
-* src_lisp[]{handle-click}
-* src_lisp[]{handle-3d-mouse-event}
-* src_lisp[]{handle-resize}
-
-** Example
+* Example
 To display an empty window:
 #+begin_src lisp
-  (ql:quickload '(:spacenav :mingl))
-  (defparameter *window* (make-instance 'mingl:gl-window))
-  (mingl:display *window*)
+  (ql:quickload :mingl.examples)
+  (mingl.mandelbrot:start)
 #+end_src
 
 ** License
