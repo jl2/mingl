@@ -27,83 +27,85 @@
                                         180))))
 
 
-(defun set-uniform (program name type value)
+(defun set-uniform (in-program name type value)
   "Bind the uniform's value in the program."
 
-  (let ((location (gl:get-uniform-location program name)))
+  (with-slots (program) in-program
+    (let ((location (gl:get-uniform-location program name)))
 
-    ;; Only assign values to uniforms that are used by the program
-    (when (>= location 0)
-      (ecase type
-        (:mat4
-         (gl:program-uniform-matrix program location
-                                    4
-                                    (vector (marr4 value))
-                                    t))
+      ;; Only assign values to uniforms that are used by the program
+      (when (>= location 0)
+        (ecase type
+          (:mat4
+           (gl:program-uniform-matrix program location
+                                      4
+                                      (vector (marr4 value))
+                                      t))
 
-        (:mat3
-         (gl:program-uniform-matrix program location
-                                    3
-                                    (vector (marr3 value))
-                                    t))
-        (:dmat4
-         (gl:program-uniform-matrix program location
-                                    4
-                                    (vector (marr4 value))
-                                    ;;(map 'vector (lambda (v) (coerce v 'double-float)) (vector (marr4 value)))
-                                    t))
+          (:mat3
+           (gl:program-uniform-matrix program location
+                                      3
+                                      (vector (marr3 value))
+                                      t))
 
-        (:dmat3
-         (gl:program-uniform-matrix program location
-                                    3
-                                    (vector (marr3 value))
-                                    ;;(map 'vector (lambda (v) (coerce v 'double-float)) (vector (marr3 value)))
-                                    t))
+          (:int
+           (gl:program-uniformi program location
+                                value))
 
-        (:int
-         (gl:program-uniformi program location
-                              value))
+          (:float
+           (gl:program-uniformf program location
+                                value))
 
-        (:float
-         (gl:program-uniformf program location
-                              value))
+          (:vec2
+           (gl:program-uniformf program location
+                                (vx value)
+                                (vy value)))
 
+          (:vec3
+           (gl:program-uniformf program location
+                                (vx value)
+                                (vy value)
+                                (vz value)))
 
-        (:vec2
-         (gl:program-uniformf program location
-                              (vx value)
-                              (vy value)))
+          (:vec4
+           (gl:program-uniformf program location
+                                (vx value)
+                                (vy value)
+                                (vz value)
+                                (vw value)))
 
-        (:vec3
-         (gl:program-uniformf program location
-                              (vx value)
-                              (vy value)
-                              (vz value)))
-
-        (:vec4
-         (gl:program-uniformf program location
-                              (vx value)
-                              (vy value)
-                              (vz value)
-                              (vw value)))
-
-        (:dvec2
-         (gl:program-uniformf program location
-                              (vx value)
-                              (vy value)))
-        (:dvec3
-         (gl:program-uniformf program location
-                              (vx value)
-                              (vy value)
-                              (vz value)))
-        (:dvec4
-         (gl:program-uniformf program location
-                              (vx value)
-                              (vy value)
-                              (vz value)
-                              (vw value)))
-))))
-
+          ;; TODO: Can I add support for doubles to cl-opengl?
+          ;; (:double
+          ;;  (gl:program-uniformd program location
+          ;;                       value))
+          ;; (:dmat3
+          ;;  (gl:program-uniform-matrix program location
+          ;;                             3
+          ;;                             (vector (marr3 value))
+          ;;                             ;;(map 'vector (lambda (v) (coerce v 'double-float)) (vector (marr3 value)))
+          ;;                             t))
+          ;; (:dmat4
+          ;;  (gl:program-uniform-matrix program location
+          ;;                             4
+          ;;                             (vector (marr4 value))
+          ;;                             ;;(map 'vector (lambda (v) (coerce v 'double-float)) (vector (marr4 value)))
+          ;;                             t))
+          ;; (:dvec2
+          ;;  (gl:program-uniformf program location
+          ;;                       (vx value)
+          ;;                       (vy value)))
+          ;; (:dvec3
+          ;;  (gl:program-uniformf program location
+          ;;                       (vx value)
+          ;;                       (vy value)
+          ;;                       (vz value)))
+          ;; (:dvec4
+          ;;  (gl:program-uniformf program location
+          ;;                       (vx value)
+          ;;                       (vy value)
+          ;;                       (vz value)
+          ;;                       (vw value)))
+          )))))
 ;; Input handlers
 (defgeneric handle-key (gl-window key scancode action mod-keys)
   (:documentation "Handle a GLFW key press.  Return non-nil if handled."))
