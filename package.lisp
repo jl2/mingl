@@ -17,16 +17,20 @@
 
 
    #:gl-window
+   #:window
    #:program
    #:with-gl-window-lock
    #:display
    #:handle-key
+   #:handle-scroll
    #:screenshot
    #:handle-resize
+   #:handle-click
    #:update
    #:render
    #:show-open-gl-info
    #:handle-3d-mouse-event
+   #:handle-cursor-position
    #:pause
 
    #:add-shader-directory

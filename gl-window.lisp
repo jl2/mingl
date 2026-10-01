@@ -209,6 +209,13 @@ best practices on other platforms too.")
     (when-let (gl-window (find-gl-window window))
       (handle-click gl-window (glfw:get-cursor-position window) mod-keys action button))))
 
+;; Mouse move callback
+(glfw:def-cursor-pos-callback cursor-position-handler (window x y)
+  (progn
+    "GLFW mouse handler.  Finds a gl-window for the window and calls the (handle-click) method."
+    (when-let (gl-window (find-gl-window window))
+      (handle-cursor-position gl-window x y))))
+
 (glfw:def-scroll-callback scroll-handler (window x-scroll y-scroll)
   (progn
     "GLFW scroll handler.  Finds a gl-window for the window and calls the (handle-scroll) method."
@@ -333,6 +340,10 @@ best practices on other platforms too.")
   (format t "~a ~a ~a ~a~%"
           mouse-pos mod-keys action button))
 
+(defmethod handle-cursor-position ((gl-window gl-window) x y)
+  (format t "~a ~a~%"
+          x y))
+
 (defmethod handle-scroll ((gl-window gl-window) mouse-pos x-scroll y-scroll)
   (format t "~a ~a ~a~%"
           mouse-pos x-scroll y-scroll))
@@ -456,6 +467,7 @@ best practices on other platforms too.")
                   (glfw:set-key-callback 'keyboard-handler window)
                   (glfw:set-mouse-button-callback 'mouse-handler window)
                   (glfw:set-scroll-callback 'scroll-handler window)
+                  (glfw:set-cursor-position-callback 'cursor-position-handler window)
                   (glfw:set-framebuffer-size-callback 'resize-handler window)
 
                   ;; The event loop
