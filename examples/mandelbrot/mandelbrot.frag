@@ -3,7 +3,7 @@
 in vec3 position;
 in vec2 complexCoordinate;
 
-uniform int maxIterations=100;
+uniform int maxIterations=1200;
 
 out vec4 outColor;
 

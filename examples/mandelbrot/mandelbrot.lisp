@@ -12,7 +12,7 @@
    (center :initarg :center :initform #C(-0.4f0 0.0f0))
    (radius :initarg :radius :initform #C(2.0f0 2.0f0))
    (click-start :initform nil)
-   (max-iterations :initarg :max-iterations :initform 500)
+   (max-iterations :initarg :max-iterations :initform 1200)
    (vao :initform 0)
    (program :initform nil)
    (vertices)
