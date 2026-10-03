@@ -476,7 +476,7 @@ best practices on other platforms too.")
                     (initialize gl-window)
 
                     #+spacenav(sn:sn-open)
-                    #+spacenav(sn:sensitivity 0.0125d0)
+                    #+spacenav(sn:sensitivity 1.0d0)
 
                     (loop
                       :with start-time = (glfw:get-time)
@@ -572,6 +572,7 @@ best practices on other platforms too.")
 
 #+spacenav
 (defmethod handle-3d-mouse-event ((gl-window gl-window) (event sn:motion-event))
+  (format t "Handling event: ~a~%" event)
   t)
 
 #+spacenav

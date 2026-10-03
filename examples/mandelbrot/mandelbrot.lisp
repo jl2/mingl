@@ -43,19 +43,25 @@
             1.0f0 -1.0f0 0.0f0
             (+ cr rr) (- ci ri)))))
 
-(defmethod initialize ((window mandelbrot-window))
-  (with-slots (vao buffers vertices indices program max-iterations) window
+(defmethod initialize ((gl-window mandelbrot-window))
+  (with-slots (vao buffers vertices indices program max-iterations window center radius) gl-window
     (setf vao (gl:gen-vertex-array))
     (gl:bind-vertex-array vao)
 
     (setf buffers (gl:gen-buffers 2))
     (gl:bind-buffer :array-buffer (car buffers))
 
-
-    (setf vertices (let ((window (compute-min-max window)))
+    (let* ((win-size (glfw:get-window-size window))
+             (width (car win-size))
+             (height (cadr win-size)))
+        (setf radius
+              (if (< width height)
+                  (complex (* 1.5(/ width height)) 2.0)
+                  (complex 2.0 (* 1.5 (/ width height))))))
+    (setf vertices (let ((window-coordinates (compute-min-max gl-window)))
                      (mingl:to-gl-array :float
-                                        (length window)
-                                        window)))
+                                        (length window-coordinates)
+                                        window-coordinates)))
 
     (gl:buffer-data :array-buffer :static-draw vertices)
     (gl:bind-buffer :element-array-buffer (cadr buffers))
@@ -70,6 +76,7 @@
     (set-uniform program "maxIterations" :int max-iterations)
 
     (with-slots (mingl::program) program
+      
       (let ((pos-location (gl:get-attrib-location mingl::program "in_position"))
             (pos-uv (gl:get-attrib-location mingl::program "in_uv")))
         (when (>= pos-location 0)
@@ -199,8 +206,8 @@
 
   (with-slots (vao max-iterations vertices buffers program mingl::window center) gl-window
     (let* ((win-size (glfw:get-window-size window))
-             (width (car win-size))
-             (height (cadr win-size))
+           (width (car win-size))
+           (height (cadr win-size))
 
              (alt-down (or (eql :press (glfw:get-key :right-alt mingl::window))
                            (eql :press (glfw:get-key :left-alt mingl::window))))
@@ -231,29 +238,44 @@
                      real-amount)
       (reload-buffers gl-window))))
 
+(defmethod handle-3d-mouse-event ((gl-window mandelbrot-window) (event sn:motion-event))
+  (with-slots (radius) gl-window
+  (with-slots (sn:x sn:z sn:y) event
+    (zoom-relative gl-window
+                   (+ 1.0f0 (* 0.05 (/ sn:y 500.0))))
+    (move-absolute gl-window
+                   (complex (* 0.1 (realpart radius) (/ sn:x 500.0))
+                            (* 0.1 (imagpart radius)  (/ sn:z 500.0))))
+    (reload-buffers gl-window)))
+  t)
+
+(defmethod handle-3d-mouse-event ((gl-window mandelbrot-window) (event sn:button-event))
+  ;;(format t "Handling event: ~a~%" event)
+  t)
+
 (defmethod mingl:handle-key ((gl-window mandelbrot-window) key scancode action mod-keys)
-  (when (null (call-next-method))
-    (let* (
-           (shift-down (find :shift mod-keys :test #'eql))
-           (alt-down (find :alt mod-keys :test #'eql))
-           (ctrl-down (find :control mod-keys :test #'eql))
-           (super-down (find :super mod-keys :test #'eql))
-           (move-amount (if alt-down
-                            0.005
-                            (if shift-down
-                                0.1
-                                0.02)))
-           (zoom-amount (if alt-down
-                            (/ 0.125 4)
-                            (if shift-down
-                                0.75
-                                0.5))))
+  (with-slots (vao max-iterations center radius vertices buffers program) gl-window
+    (when (null (call-next-method))
+      (let* (
+             (shift-down (find :shift mod-keys :test #'eql))
+             (alt-down (find :alt mod-keys :test #'eql))
+             (ctrl-down (find :control mod-keys :test #'eql))
+             (super-down (find :super mod-keys :test #'eql))
+             (move-amount (if alt-down
+                              0.005
+                              (if shift-down
+                                  0.1
+                                  0.02)))
+             (zoom-amount (if alt-down
+                              (/ 0.125 4)
+                              (if shift-down
+                                  0.75
+                                  0.5))))
 
-      (declare (ignorable shift-down alt-down ctrl-down super-down))
-
-      (with-slots (vao max-iterations center radius vertices buffers program) gl-window
+        (declare (ignorable shift-down alt-down ctrl-down super-down))
 
         (gl:bind-vertex-array vao)
+
         (cond
           ((and (or (eql action :press)
                     (eql action :repeat))
