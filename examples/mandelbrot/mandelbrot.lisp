@@ -277,6 +277,11 @@
         (gl:bind-vertex-array vao)
 
         (cond
+          ((and (or (eql action :press))
+                (eql key :s))
+           (format t "(make-instance 'mandelbrot-window :center ~a :radius ~a)~%"
+                   center radius))
+
           ((and (or (eql action :press)
                     (eql action :repeat))
                 (eql key :f5))
