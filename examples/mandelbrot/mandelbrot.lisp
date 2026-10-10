@@ -8,13 +8,14 @@
 (in-package :mingl.mandelbrot)
 
 (defclass mandelbrot-window (mingl:gl-window)
-  ((buffers)
-   (center :initarg :center :initform #C(-0.4f0 0.0f0))
+  ((center :initarg :center :initform #C(-0.4f0 0.0f0))
    (radius :initarg :radius :initform #C(2.0f0 2.0f0))
-   (click-start :initform nil)
    (max-iterations :initarg :max-iterations :initform 1200)
+   (click-start :initform nil)
+
    (vao :initform 0)
    (program :initform nil)
+   (buffers)
    (vertices)
    (indices)))
 
