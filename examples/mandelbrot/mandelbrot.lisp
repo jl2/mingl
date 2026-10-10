@@ -279,8 +279,8 @@
         (cond
           ((and (or (eql action :press))
                 (eql key :s))
-           (format t "(make-instance 'mandelbrot-window :center ~a :radius ~a)~%"
-                   center radius))
+           (format t "(make-instance 'mandelbrot-window :center ~a :radius ~a :max-iterations ~a)~%"
+                   center radius max-iterations))
 
           ((and (or (eql action :press)
                     (eql action :repeat))
