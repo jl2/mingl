@@ -15,6 +15,7 @@
 
    (vao :initform 0)
    (program :initform nil)
+   (joystick :initform 0 :initarg :joystick)
    (buffers)
    (vertices)
    (indices)))
@@ -77,7 +78,6 @@
     (set-uniform program "maxIterations" :int max-iterations)
 
     (with-slots (mingl::program) program
-      
       (let ((pos-location (gl:get-attrib-location mingl::program "in_position"))
             (pos-uv (gl:get-attrib-location mingl::program "in_uv")))
         (when (>= pos-location 0)
@@ -96,13 +96,12 @@
                                     :float
                                     nil
                                     (* 5 4)
-                                    (* 3 4))))))
+                                    #.(* 3 4))))))
   (call-next-method))
 
 (defmethod render ((window mandelbrot-window))
   (call-next-method)
   (with-slots (vao buffers program) window
-    (gl:bind-vertex-array vao)
     (mingl:use-shader-program program)
 
     (gl:bind-buffer :array-buffer (car buffers))
@@ -163,30 +162,32 @@
                vertices buffers
                center radius
                click-start) gl-window
-    (when click-start
-      (let* ((win-size (glfw:get-window-size window))
-             (width (car win-size))
-             (height (cadr win-size))
-              (click-original (screen-to-mandelbrot (car click-start)
-                                                    (cadr click-start)
-                                                    width
-                                                    height
-                                                    gl-window
-                                                    ))
-              (click-now (screen-to-mandelbrot x
-                                               y
-                                               width
-                                               height
-                                               gl-window
-                                               ))
-              )
 
-        (gl:bind-vertex-array vao)
-        (move-absolute gl-window
-                       (- click-original click-now))
-        (glfw:set-cursor-position (car click-start) (cadr click-start) window)
-        (reload-buffers gl-window)
-        t))))
+    (when (null click-start)
+      (return-from mingl:handle-cursor-position t))
+
+    (let* ((win-size (glfw:get-window-size window))
+           (width (car win-size))
+           (height (cadr win-size))
+           (start-x (car click-start))
+           (start-y (cadr click-start))
+           (click-original (screen-to-mandelbrot start-x
+                                                 start-y
+                                                 width
+                                                 height
+                                                 gl-window))
+           (click-now (screen-to-mandelbrot x
+                                            y
+                                            width
+                                            height
+                                            gl-window))
+           )
+
+
+      (move-absolute gl-window
+                     (- click-original click-now))
+      (glfw:set-cursor-position start-x start-y window)
+      (reload-buffers gl-window))))
 
 (defmethod mingl:handle-click ((gl-window mandelbrot-window) mouse-pos mod-keys action button)
   (with-slots (window program
@@ -194,7 +195,7 @@
                vertices buffers
                center radius
                click-start) gl-window
-    (gl:bind-vertex-array vao)
+
     (cond
       ((and (eql action :press))
        (setf click-start mouse-pos))
@@ -206,53 +207,92 @@
 (defmethod mingl:handle-scroll ((gl-window mandelbrot-window) mouse-pos x-scroll y-scroll)
 
   (with-slots (vao max-iterations vertices buffers program mingl::window center) gl-window
-    (let* ((win-size (glfw:get-window-size window))
-           (width (car win-size))
-           (height (cadr win-size))
+    (let*
+        ((win-size
+           (glfw:get-window-size window))
 
-             (alt-down (or (eql :press (glfw:get-key :right-alt mingl::window))
-                           (eql :press (glfw:get-key :left-alt mingl::window))))
-           (shift-down (or (eql :press (glfw:get-key :right-shift mingl::window))
-                           (eql :press (glfw:get-key :left-shift mingl::window))))
-           (zoom-amount (if alt-down
-                            (/ 0.125 4)
-                            (if shift-down
-                                0.5
-                                0.25)))
-           (real-amount (coerce (if (< 0 y-scroll)
-                                    (- 1 zoom-amount)
-                                    (+ 1 zoom-amount))
-                                'single-float))
-           (scroll-center (screen-to-mandelbrot (car mouse-pos)
+         (width
+           (car win-size))
+         (height
+           (cadr win-size))
+
+         (alt-down
+           (or (eql :press (glfw:get-key :right-alt mingl::window))
+               (eql :press (glfw:get-key :left-alt mingl::window))))
+         (shift-down
+           (or (eql :press (glfw:get-key :right-shift mingl::window))
+               (eql :press (glfw:get-key :left-shift mingl::window))))
+
+         (zoom-amount
+           (if alt-down
+               (/ 0.125 4)
+               (if shift-down
+                   0.5
+                   0.25)))
+         (real-amount
+           (coerce (if (< 0 y-scroll)
+                       (- 1 zoom-amount)
+                       (+ 1 zoom-amount))
+                   'single-float))
+
+         (scroll-center
+           (screen-to-mandelbrot (car mouse-pos)
                                  (cadr mouse-pos)
-                                                    width
-                                                    height
-                                                    gl-window
-                                                    ))
-           (move-amount (- center scroll-center)))
+                                 width
+                                 height
+                                 gl-window))
+         (move-amount (- center scroll-center)))
 
       (declare (ignorable shift-down alt-down))
-      (gl:bind-vertex-array vao)
-      (move-absolute gl-window (/ move-amount width))
 
-      (zoom-relative gl-window
-                     real-amount)
+      (move-absolute gl-window (/ move-amount width))
+      (zoom-relative gl-window real-amount)
+
       (reload-buffers gl-window))))
 
 (defmethod handle-3d-mouse-event ((gl-window mandelbrot-window) (event sn:motion-event))
   (with-slots (radius) gl-window
-  (with-slots (sn:x sn:z sn:y) event
-    (zoom-relative gl-window
-                   (+ 1.0f0 (* 0.05 (/ sn:y 500.0))))
-    (move-absolute gl-window
-                   (complex (* 0.1 (realpart radius) (/ sn:x 500.0))
-                            (* 0.1 (imagpart radius)  (/ sn:z 500.0))))
-    (reload-buffers gl-window)))
+    (with-slots (sn:x sn:z sn:y) event
+      (zoom-relative gl-window
+                     (+ 1.0f0 (* 0.05 (/ sn:y 500.0))))
+      (move-absolute gl-window
+                     (complex (* 0.1 (realpart radius) (/ sn:x 500.0))
+                              (* 0.1 (imagpart radius)  (/ sn:z 500.0))))
+      (reload-buffers gl-window)))
   t)
 
+(defmethod mingl:handle-joystick ((gl-window gl-window))
+  (with-slots (radius joystick) gl-window
+    (when (and joystick (glfw:joystick-present-p joystick))
+      (let* ((axes (glfw:get-joystick-axes 0))
+             (buttons (glfw:get-joystick-buttons 0))
+             (xd (car axes))
+             (yd (cadr axes))
+             (zd (caddr axes))
+             (real-comp (* 0.02 (realpart radius) xd))
+             (imag-comp (* -0.02 (imagpart radius)  yd))
+             (zoom-comp (* 0.01 zd)))
+
+
+        (declare (ignorable buttons axes))
+        (when (< 0.1 (abs zd))
+          (zoom-relative gl-window
+                         (+ 1.0f0 zoom-comp)))
+        (move-absolute gl-window
+                        (complex
+                         (if (> 0.01 (abs xd))
+                             0.0
+                             real-comp)
+                         (if (> 0.01 (abs yd))
+                             0.0
+                             imag-comp)))
+        (reload-buffers gl-window)
+        t)))
+  nil)
+
+
 (defmethod handle-3d-mouse-event ((gl-window mandelbrot-window) (event sn:button-event))
-  ;;(format t "Handling event: ~a~%" event)
-  t)
+  (call-next-method))
 
 (defmethod mingl:handle-key ((gl-window mandelbrot-window) key scancode action mod-keys)
   (with-slots (vao max-iterations center radius vertices buffers program) gl-window
@@ -274,8 +314,6 @@
                                   0.5))))
 
         (declare (ignorable shift-down alt-down ctrl-down super-down))
-
-        (gl:bind-vertex-array vao)
 
         (cond
           ((and (or (eql action :press))

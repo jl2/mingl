@@ -26,6 +26,7 @@
    #:screenshot
    #:handle-resize
    #:handle-click
+   #:handle-joystick
    #:update
    #:render
    #:show-open-gl-info

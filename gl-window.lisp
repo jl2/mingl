@@ -256,6 +256,7 @@ best practices on other platforms too.")
 (defmethod handle-joystick ((gl-window gl-window))
   (declare (ignorable gl-window))
   nil)
+
 (defmethod handle-focus ((gl-window gl-window) focusedp)
   (with-slots (focused) gl-window
     (setf focused focusedp)
