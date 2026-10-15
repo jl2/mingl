@@ -7,7 +7,8 @@
   (:use #:cl
         #:alexandria
         #:3d-vectors
-        #:3d-matrices)
+        #:3d-matrices
+        #:gtools)
   (:export
 
    #:initialize
@@ -17,6 +18,7 @@
 
 
    #:gl-window
+   #:3d-window
    #:window
    #:program
    #:with-gl-window-lock

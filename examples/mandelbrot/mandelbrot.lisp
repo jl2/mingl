@@ -261,7 +261,7 @@
       (reload-buffers gl-window)))
   t)
 
-(defmethod mingl:handle-joystick ((gl-window gl-window))
+(defmethod mingl:handle-joystick ((gl-window mandelbrot-window))
   (with-slots (radius joystick) gl-window
     (when (and joystick (glfw:joystick-present-p joystick))
       (let* ((axes (glfw:get-joystick-axes 0))

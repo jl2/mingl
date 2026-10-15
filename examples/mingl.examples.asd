@@ -31,4 +31,7 @@
 
   :components ((:module "mandelbrot"
                 :components
-                ((:file "mandelbrot")))))
+                ((:file "mandelbrot")))
+               (:module "dynamic-system"
+                :components
+                ((:file "ds")))))

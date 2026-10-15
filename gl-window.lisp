@@ -144,8 +144,8 @@ best practices on other platforms too.")
                        :initarg :synchronous-output
                        :documentation "Whether or not to force OpenGL output to be synchronous.")
 
-   (joysticks :initform nil
-              :initarg :joysticks
+   (joystick :initform nil
+              :initarg :joystick
               :type (or fixnum list null)
               :documentation "")
 
@@ -342,12 +342,14 @@ best practices on other platforms too.")
           mouse-pos mod-keys action button))
 
 (defmethod handle-cursor-position ((gl-window gl-window) x y)
-  (format t "~a ~a~%"
-          x y))
+  ;; (format t "~a ~a~%"
+  ;;         x y)
+  )
 
 (defmethod handle-scroll ((gl-window gl-window) mouse-pos x-scroll y-scroll)
-  (format t "~a ~a ~a~%"
-          mouse-pos x-scroll y-scroll))
+  ;; (format t "~a ~a ~a~%"
+  ;;         mouse-pos x-scroll y-scroll)
+  )
 
 (defun screenshot (gl-window)
   (declare  (optimize (speed 3) (safety 0) (debug 3) (space 0)))
@@ -590,8 +592,8 @@ best practices on other platforms too.")
          (setf view-changed t)
          t)
 
-        ((sn:button-press-p event :fit)
-         (format t ":fit pressed!~%")
+        ((sn:button-press-p event :menu)
+         (format t ":menu pressed!~%")
          (show-open-gl-info)
          nil)
 

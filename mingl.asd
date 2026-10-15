@@ -21,7 +21,8 @@
                #:simple-png
                #:bordeaux-threads
                #:trivial-main-thread
-               #:lparallel)
+               #:lparallel
+               #:gtools)
 
   :components ((:file "package")
                (:file "common")
@@ -31,6 +32,7 @@
                (:file "texture")
                (:file "png-texture")
                (:file "gl-window")
+               (:file "3d-window")
                (:file "mingl"))
 
   :in-order-to ((test-op (test-op
