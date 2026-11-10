@@ -48,6 +48,7 @@
   (:documentation "A viewer with keyboard and 3d mouse camera rotation around a target point."))
 
 (defgeneric view-matrix (window))
+
 (defmethod view-matrix ((viewer 3d-window))
   (with-slots (program field-of-view aspect-ratio near far quat pos camera-type) viewer
     (let ((xform (m*
@@ -66,7 +67,7 @@
     (setf pos (vec3 0 0 -5))
     (setf quat (vec4 0 0 0.0 1))))
 
-(defmethod render :before ((gl-window gl-window))
+(defmethod render :before ((gl-window 3d-window))
   (view-matrix gl-window))
 
 (defmethod handle-key ((viewer 3d-window) key scancode action mod-keys)
@@ -205,12 +206,12 @@
                    sn:rx sn:ry sn:rz) event
 
 
-        (let* ((nx (/ sn:x 500.0))
-               (ny (/ sn:y 500.0))
-               (nz (/ sn:z 500.0))
-               (nrx (/ sn:rx 2500.0))
-               (nry (/ sn:ry 2500.0))
-               (nrz (/ sn:rz 2500.0))
+        (let* ((nx (/ sn:x 250.0))
+               (ny (/ sn:y 250.0))
+               (nz (/ sn:z 250.0))
+               (nrx (/ sn:rx 1250.0))
+               (nry (/ sn:ry 1250.0))
+               (nrz (/ sn:rz 1250.0))
                (len (sqrt (+ (* nrx nrx)
                              (* nry nry)
                              (* nrz nrz)))))
@@ -223,13 +224,13 @@
                                              (/ nry  len
                                                 -1.0)
                                              (/ nrz  len
-                                                1.0)))))
+                                                -1.0)))))
           (when zoom-enabled
             (setf pos (v+ pos (vec3-quaternion-rotate
                                quat
-                               (vec3 (* nx -1.8)
-                                     (* ny -1.8)
-                                     (* nz 1.8)))))))))))
+                               (vec3 nx
+                                     nz
+                                     (- ny)))))))))))
 
 (defmethod handle-joystick ((viewer 3d-window))
   (with-slots (pos
@@ -269,16 +270,20 @@
 
 #+spacenav
 (defmethod handle-3d-mouse-event ((viewer 3d-window) (event sn:button-event))
-  (with-slots (rotation-enabled window) viewer
+  (with-slots (rotation-enabled zoom-enabled window) viewer
     (cond
       ((sn:button-press-p event :joystick)
-       (format t ":joystick pressed!~%")
        (with-gl-window-lock (viewer)
-         (setf rotation-enabled (not rotation-enabled)))
+         (setf zoom-enabled (not zoom-enabled)))
+       (format t "Zoom-enabled is now: ~a~%" zoom-enabled)
        t)
       ((sn:button-press-p event :fit)
-       (format t ":fit pressed!~%")
        (reset-view-safe viewer)
+       t)
+      ((sn:button-press-p event :rotate)
+       (with-gl-window-lock (viewer)
+         (setf rotation-enabled (not rotation-enabled)))
+       (format t "Zoom-enabled is now: ~a~%" rotation-enabled)
        t)
       (t
        (call-next-method)))))
