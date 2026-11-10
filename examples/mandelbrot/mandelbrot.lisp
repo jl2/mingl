@@ -157,6 +157,7 @@
     (setf radius (* radius amount))))
 
 (defmethod mingl:handle-cursor-position ((gl-window mandelbrot-window) x y)
+  (call-next-method)
   (with-slots (window program
                vao max-iterations
                vertices buffers
@@ -190,6 +191,7 @@
       (reload-buffers gl-window))))
 
 (defmethod mingl:handle-click ((gl-window mandelbrot-window) mouse-pos mod-keys action button)
+  (call-next-method)
   (with-slots (window program
                vao max-iterations
                vertices buffers
@@ -205,7 +207,7 @@
     t))
 
 (defmethod mingl:handle-scroll ((gl-window mandelbrot-window) mouse-pos x-scroll y-scroll)
-
+  (call-next-method)
   (with-slots (vao max-iterations vertices buffers program mingl::window center) gl-window
     (let*
         ((win-size
