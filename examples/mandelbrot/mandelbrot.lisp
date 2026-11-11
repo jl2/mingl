@@ -390,10 +390,14 @@
           ;; Wasn't handled
           (t nil))))))
 
-(defun start ()
+(defun start (&key
+                (center #C(0 0))
+                (radius #C(2.5 1.5)))
 
   (mingl:add-shader-search-directory (asdf:system-relative-pathname :mingl.examples "mandelbrot/"))
   (let ((window (make-instance 'mandelbrot-window
+                               :center center
+                               :radius radius
                                :use-main-thread t
                                :wait-for-exit nil)))
     (mingl:display window)))
